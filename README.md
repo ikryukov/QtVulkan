@@ -3,6 +3,7 @@ Example of usage Vulkan (MoltenVK) with Qt on OS X
 
 # Dependencies
 Install Lunar SDK from: https://vulkan.lunarg.com/sdk/home#mac
+
 Qt 5.10.0
 
 # Preparations
