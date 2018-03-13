@@ -7,6 +7,7 @@ Qt 5.10.0
 
 # Preparations
 Set env variables:
+
 VK_LAYER_PATH = <sdk>/macOS/etc/vulkan/explicit_layers.d
 
 VK_ICD_FILENAMES = <sdk>/macOS/etc/vulkan/icd.d/MoltenVK_icd.json
