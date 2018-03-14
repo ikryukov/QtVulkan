@@ -49,4 +49,9 @@ macx {
     INCLUDEPATH += $${VULKAN_SDK_PATH}/macOS/include
     # Fix @rpath
     QMAKE_RPATHDIR += @executable_path/../Frameworks
+
+    QMAKE_POST_LINK += $${VULKAN_SDK_PATH}/macOS/bin/glslangValidator -V $$PWD/shaders/shader.vert;
+    QMAKE_POST_LINK += $${VULKAN_SDK_PATH}/macOS/bin/glslangValidator -V $$PWD/shaders/shader.frag;
+    QMAKE_POST_LINK += $$QMAKE_COPY $$PWD/vert.spv $$OUT_PWD/$${TARGET}.app/Contents/MacOS;
+    QMAKE_POST_LINK += $$QMAKE_COPY $$PWD/frag.spv $$OUT_PWD/$${TARGET}.app/Contents/MacOS;
 }
