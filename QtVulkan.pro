@@ -25,7 +25,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-        mainwindow.cpp
+        mainwindow.cpp \
+        makeviewmetal.mm
 
 HEADERS += \
         mainwindow.h
@@ -39,6 +40,7 @@ macx {
     VULKAN_SDK_PATH = /Users/ilyakryukov/Documents/vulkansdk-macos-1.0.69.0/
     VULKAN_DYLIB = $${VULKAN_SDK_PATH}/macOS/lib/libvulkan.1.dylib
     LIBS += $$VULKAN_DYLIB
+    LIBS += -framework Cocoa -framework QuartzCore
     # Copy dylib to app bundle
     VULKAN_DATA.path = Contents/Frameworks
     VULKAN_DATA.files = $$VULKAN_DYLIB
