@@ -4,6 +4,7 @@
 #include <qtimer.h>
 #include <QMainWindow>
 
+#include <QResizeEvent>
 #include <vector>
 
 #define NOMINMAX
@@ -33,6 +34,8 @@ class MainWindow : public QMainWindow {
     explicit MainWindow(QWidget* parent = 0);
     ~MainWindow();
 
+    void resize(int w, int h);
+
     void initVulkan();
     void setupDebugCallback();
     void pickPhysicalDevice();
@@ -46,10 +49,13 @@ class MainWindow : public QMainWindow {
     void createCommandPool();
     void createCommandBuffers();
     void createSemaphores();
+    void createFences();
+    void recreateSwapChain();
 
     void drawFrame();
 
     void cleanup();
+    void cleanupSwapChain();
 
     void createInstance();
     void checkExtensions();
@@ -65,13 +71,16 @@ class MainWindow : public QMainWindow {
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
     VkShaderModule createShaderModule(const std::vector<char>& code);
 
+   protected:
+    void resizeEvent(QResizeEvent* event);
+
    private:
     Ui::MainWindow* ui;
 
     QTimer t;
 
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
+    uint32_t windowWidth = 800;
+    uint32_t windowHeigh = 600;
 
     const std::vector<const char*> validationLayers = {"VK_LAYER_LUNARG_standard_validation"};
 
@@ -109,6 +118,7 @@ class MainWindow : public QMainWindow {
 
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
+    std::vector<VkFence> waitFences;
 
     VkDebugReportCallbackEXT callback;
 };

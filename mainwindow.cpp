@@ -7,6 +7,7 @@
 #include <set>
 
 #include <QDebug>
+#include <QSize>
 
 extern "C" {
 void makeViewMetalCompatible(void* handle);
@@ -79,6 +80,15 @@ MainWindow::~MainWindow() {
     delete ui;
 }
 
+void MainWindow::resizeEvent(QResizeEvent* event) {
+    t.stop();
+    QMainWindow::resizeEvent(event);
+    windowWidth = event->size().width();
+    windowHeigh = event->size().height();
+    recreateSwapChain();
+    t.start();
+}
+
 void MainWindow::initVulkan() {
     createInstance();
     setupDebugCallback();
@@ -93,6 +103,7 @@ void MainWindow::initVulkan() {
     createCommandPool();
     createCommandBuffers();
     createSemaphores();
+    createFences();
 }
 
 void MainWindow::setupDebugCallback() {
@@ -489,7 +500,7 @@ void MainWindow::createCommandBuffers() {
         throw std::runtime_error("failed to allocate command buffers!");
     }
 
-    for (size_t i = 0; i < commandBuffers.size(); i++) {
+    for (size_t i = 0; i < commandBuffers.size(); ++i) {
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -503,7 +514,7 @@ void MainWindow::createCommandBuffers() {
         renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = swapChainExtent;
 
-        VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+        VkClearValue clearColor{0.0f, 0.0f, 0.0f, 1.0f};
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearColor;
 
@@ -531,13 +542,49 @@ void MainWindow::createSemaphores() {
     }
 }
 
+void MainWindow::createFences() {
+    VkFenceCreateInfo fenceCreateInfo = {};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    waitFences.resize(commandBuffers.size());
+    for (auto& fence : waitFences) {
+        if (vkCreateFence(device, &fenceCreateInfo, nullptr, &fence)) {
+            throw std::runtime_error("failed to create fences!");
+        }
+    }
+}
+
+void MainWindow::recreateSwapChain() {
+    if (windowHeigh == 0 || windowWidth == 0)
+        return;
+    qDebug() << "recreateSwapChain()";
+    vkDeviceWaitIdle(device);
+
+    cleanupSwapChain();
+
+    createSwapChain();
+    createImageViews();
+    createRenderPass();
+    createGraphicsPipeline();
+    createFramebuffers();
+    createCommandBuffers();
+}
+
 void MainWindow::drawFrame() {
     // update app state here:
 
-    // vkQueueWaitIdle(presentQueue);
-
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        recreateSwapChain();
+        return;
+    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        throw std::runtime_error("failed to acquire swap chain image!");
+    }
+
+    vkWaitForFences(device, 1, &waitFences[imageIndex], VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &waitFences[imageIndex]);
 
     // submit draw commands:
     VkSubmitInfo submitInfo = {};
@@ -556,7 +603,7 @@ void MainWindow::drawFrame() {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, waitFences[imageIndex]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 
@@ -570,37 +617,51 @@ void MainWindow::drawFrame() {
     VkSwapchainKHR swapChains[] = {swapChain};
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = swapChains;
-
     presentInfo.pImageIndices = &imageIndex;
 
-    vkQueuePresentKHR(presentQueue, &presentInfo);
+    result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
-    // vkQueueWaitIdle(presentQueue);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        recreateSwapChain();
+    } else if (result != VK_SUCCESS) {
+        throw std::runtime_error("failed to present swap chain image!");
+    }
 }
 
 void MainWindow::cleanup() {
+    cleanupSwapChain();
+
+    for (auto& fence : waitFences) {
+        vkDestroyFence(device, fence, nullptr);
+    }
+
     vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
     vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
 
     vkDestroyCommandPool(device, commandPool, nullptr);
 
-    for (auto framebuffer : swapChainFramebuffers) {
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
+    vkDestroyDevice(device, nullptr);
+    DestroyDebugReportCallbackEXT(instance, callback, nullptr);
+    vkDestroySurfaceKHR(instance, surface, nullptr);
+    vkDestroyInstance(instance, nullptr);
+}
+
+void MainWindow::cleanupSwapChain() {
+    for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
+        vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
     }
+
+    vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
 
-    for (auto imageView : swapChainImageViews) {
-        vkDestroyImageView(device, imageView, nullptr);
+    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+        vkDestroyImageView(device, swapChainImageViews[i], nullptr);
     }
 
     vkDestroySwapchainKHR(device, swapChain, nullptr);
-    vkDestroyDevice(device, nullptr);
-    DestroyDebugReportCallbackEXT(instance, callback, nullptr);
-    vkDestroySurfaceKHR(instance, surface, nullptr);
-    vkDestroyInstance(instance, nullptr);
 }
 
 void MainWindow::createInstance() {
@@ -817,7 +878,7 @@ VkExtent2D MainWindow::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabili
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
         return capabilities.currentExtent;
     } else {
-        VkExtent2D actualExtent = {WIDTH, HEIGHT};
+        VkExtent2D actualExtent = {windowWidth, windowHeigh};
 
         actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
         actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
