@@ -1,8 +1,8 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QMainWindow>
 #include <qtimer.h>
+#include <QMainWindow>
 
 #include <vector>
 
@@ -17,9 +17,7 @@ struct QueueFamilyIndices {
     int graphicsFamily = -1;
     int presentFamily = -1;
 
-    bool isComplete() {
-        return graphicsFamily >= 0 && presentFamily >= 0;
-    }
+    bool isComplete() { return graphicsFamily >= 0 && presentFamily >= 0; }
 };
 
 struct SwapChainSupportDetails {
@@ -28,12 +26,11 @@ struct SwapChainSupportDetails {
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
     Q_OBJECT
 
-public:
-    explicit MainWindow(QWidget *parent = 0);
+   public:
+    explicit MainWindow(QWidget* parent = 0);
     ~MainWindow();
 
     void initVulkan();
@@ -66,29 +63,26 @@ public:
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-    VkShaderModule createShaderModule(const std::vector<char> &code);
-private:
-    Ui::MainWindow *ui;
+    VkShaderModule createShaderModule(const std::vector<char>& code);
 
-	QTimer t;
+   private:
+    Ui::MainWindow* ui;
+
+    QTimer t;
 
     const uint32_t WIDTH = 800;
     const uint32_t HEIGHT = 600;
 
-    const std::vector<const char*> validationLayers = {
-        "VK_LAYER_LUNARG_standard_validation"
-    };
+    const std::vector<const char*> validationLayers = {"VK_LAYER_LUNARG_standard_validation"};
 
-    const std::vector<const char*> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
+    const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
     const bool enableValidationLayers = false;
 #endif
-private:
+   private:
     VkInstance instance;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
@@ -119,4 +113,4 @@ private:
     VkDebugReportCallbackEXT callback;
 };
 
-#endif // MAINWINDOW_H
+#endif  // MAINWINDOW_H
