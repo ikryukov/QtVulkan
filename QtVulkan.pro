@@ -25,8 +25,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-        mainwindow.cpp \
-        makeviewmetal.mm
+        mainwindow.cpp
 
 HEADERS += \
         mainwindow.h
@@ -35,6 +34,7 @@ FORMS += \
         mainwindow.ui
 
 macx {
+    SOURCES += makeviewmetal.mm
     DEFINES += VK_USE_PLATFORM_MACOS_MVK
     # CHANGE HERE TO YOUR SDK PATH:
     VULKAN_SDK_PATH = /Users/ilyakryukov/Documents/vulkansdk-macos-1.0.69.0/
@@ -54,4 +54,11 @@ macx {
     QMAKE_POST_LINK += $${VULKAN_SDK_PATH}/macOS/bin/glslangValidator -V $$PWD/shaders/shader.frag;
     QMAKE_POST_LINK += $$QMAKE_COPY $$PWD/vert.spv $$OUT_PWD/$${TARGET}.app/Contents/MacOS;
     QMAKE_POST_LINK += $$QMAKE_COPY $$PWD/frag.spv $$OUT_PWD/$${TARGET}.app/Contents/MacOS;
+}
+
+win32 {
+    DEFINES += VK_USE_PLATFORM_WIN32_KHR
+    VULKAN_SDK_PATH = C:\\VulkanSDK\\1.1.70.1
+    INCLUDEPATH += $${VULKAN_SDK_PATH}/Include
+    LIBS += $${VULKAN_SDK_PATH}/Lib/vulkan-1.lib
 }

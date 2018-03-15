@@ -2,8 +2,11 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <qtimer.h>
+
 #include <vector>
 
+#define NOMINMAX
 #include <vulkan/vulkan.h>
 
 namespace Ui {
@@ -67,6 +70,8 @@ public:
 private:
     Ui::MainWindow *ui;
 
+	QTimer t;
+
     const uint32_t WIDTH = 800;
     const uint32_t HEIGHT = 600;
 
@@ -81,7 +86,7 @@ private:
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
-    const bool enableValidationLayers = true;
+    const bool enableValidationLayers = false;
 #endif
 private:
     VkInstance instance;

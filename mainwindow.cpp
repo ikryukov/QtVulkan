@@ -4,6 +4,8 @@
 #include <set>
 #include <cstring>
 #include <fstream>
+#include <limits>
+
 #include <QDebug>
 
 extern "C" {
@@ -67,7 +69,12 @@ MainWindow::MainWindow(QWidget *parent) :
 
     initVulkan();
 
-    drawFrame();
+
+	t.setInterval(16);
+	QObject::connect(&t, &QTimer::timeout, this, &MainWindow::drawFrame);
+	t.start();
+
+    //drawFrame();
 }
 
 MainWindow::~MainWindow()
@@ -173,6 +180,7 @@ void MainWindow::createLogicalDevice()
 
 void MainWindow::createSurface()
 {
+#ifdef VK_USE_PLATFORM_MACOS_MVK
     VkMacOSSurfaceCreateInfoMVK surfaceInfo;
     surfaceInfo.sType = VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK;
     surfaceInfo.pNext = NULL;
@@ -185,6 +193,17 @@ void MainWindow::createSurface()
     {
         qDebug() << "Failed to create surface";
     }
+#elif VK_USE_PLATFORM_WIN32_KHR
+	VkWin32SurfaceCreateInfoKHR createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    createInfo.hwnd = reinterpret_cast<HWND>(winId());
+	createInfo.hinstance = GetModuleHandle(nullptr);
+    auto CreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR) vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");
+
+    if (!CreateWin32SurfaceKHR || CreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create window surface!");
+    }
+#endif
 }
 
 void MainWindow::createSwapChain()
@@ -536,9 +555,14 @@ void MainWindow::createSemaphores()
 
 void MainWindow::drawFrame()
 {
+	// update app state here:
+
+	//vkQueueWaitIdle(presentQueue);
+
     uint32_t imageIndex;
     vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
+	// submit draw commands:
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -559,6 +583,7 @@ void MainWindow::drawFrame()
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 
+	// present:
     VkPresentInfoKHR presentInfo = {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
@@ -573,7 +598,7 @@ void MainWindow::drawFrame()
 
     vkQueuePresentKHR(presentQueue, &presentInfo);
 
-    vkQueueWaitIdle(presentQueue);
+    //vkQueueWaitIdle(presentQueue);
 }
 
 void MainWindow::cleanup()
@@ -632,7 +657,8 @@ void MainWindow::createInstance()
         createInfo.enabledLayerCount = 0;
     }
 
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+    VkResult res = vkCreateInstance(&createInfo, nullptr, &instance);
+    if (res != VK_SUCCESS) {
         throw std::runtime_error("failed to create instance!");
     }
 }
@@ -685,7 +711,11 @@ std::vector<const char *> MainWindow::getRequiredExtensions()
     std::vector<const char*> extensions;//(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
     extensions.push_back("VK_KHR_surface");
+#ifdef VK_USE_PLATFORM_MACOS_MVK
     extensions.push_back("VK_MVK_macos_surface");
+#else
+	extensions.push_back("VK_KHR_win32_surface");
+#endif
     //    extensions.push_back("VK_KHR_swapchain");
     if (enableValidationLayers) {
         extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
