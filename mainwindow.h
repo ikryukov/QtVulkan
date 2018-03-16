@@ -5,12 +5,15 @@
 #include <QMainWindow>
 #include <QResizeEvent>
 #include <array>
+#include <chrono>
 #include <vector>
 
 #define NOMINMAX
 #include <vulkan/vulkan.h>
 
+#define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace Ui {
 class MainWindow;
@@ -27,6 +30,12 @@ struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
+};
+
+struct UniformBufferObject {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
 };
 
 struct Vertex {
@@ -86,9 +95,14 @@ class MainWindow : public QMainWindow {
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void createVertexBuffer();
-	void createIndexBuffer();
+    void createIndexBuffer();
+    void createUniformBuffer();
+    void createDescriptorPool();
+    void createDescriptorSet();
+    void createDescriptorSetLayout();
 
     void drawFrame();
+    void updateUniformBuffer();
 
     void cleanup();
     void cleanupSwapChain();
@@ -153,6 +167,7 @@ class MainWindow : public QMainWindow {
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkRenderPass renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
 
@@ -167,6 +182,11 @@ class MainWindow : public QMainWindow {
     VkDeviceMemory vertexBufferMemory;
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
+    VkBuffer uniformBuffer;
+    VkDeviceMemory uniformBufferMemory;
+
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet descriptorSet;
 
     VkDebugReportCallbackEXT callback;
 };
