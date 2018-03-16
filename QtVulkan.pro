@@ -33,6 +33,8 @@ HEADERS += \
 FORMS += \
         mainwindow.ui
 
+INCLUDEPATH += ./external/glm/
+
 macx {
     SOURCES += makeviewmetal.mm
     DEFINES += VK_USE_PLATFORM_MACOS_MVK
