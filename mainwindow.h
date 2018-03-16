@@ -128,7 +128,7 @@ class MainWindow : public QMainWindow {
    private:
     Ui::MainWindow* ui;
 
-    QTimer t;
+    QTimer renderTimer;
 
     uint32_t windowWidth = 800;
     uint32_t windowHeigh = 600;

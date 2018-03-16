@@ -68,11 +68,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     initVulkan();
 
-    t.setInterval(16);
-    QObject::connect(&t, &QTimer::timeout, this, &MainWindow::drawFrame);
-    t.start();
-
-    // drawFrame();
+    renderTimer.setInterval(16);
+    QObject::connect(&renderTimer, &QTimer::timeout, this, &MainWindow::drawFrame);
+    renderTimer.start();
 }
 
 MainWindow::~MainWindow() {
@@ -81,12 +79,12 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event) {
-    t.stop();
     QMainWindow::resizeEvent(event);
-    windowWidth = event->size().width();
-    windowHeigh = event->size().height();
-    recreateSwapChain();
-    t.start();
+    if (windowWidth != event->size().width() || windowHeigh != event->size().height()) {
+        windowWidth = event->size().width();
+        windowHeigh = event->size().height();
+        recreateSwapChain();
+    }
 }
 
 void MainWindow::initVulkan() {
