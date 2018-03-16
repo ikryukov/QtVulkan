@@ -629,6 +629,8 @@ void MainWindow::drawFrame() {
 }
 
 void MainWindow::cleanup() {
+	vkDeviceWaitIdle(device);
+
     cleanupSwapChain();
 
     for (auto& fence : waitFences) {
