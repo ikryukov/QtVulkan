@@ -629,7 +629,7 @@ void MainWindow::drawFrame() {
 }
 
 void MainWindow::cleanup() {
-	vkDeviceWaitIdle(device);
+    vkDeviceWaitIdle(device);
 
     cleanupSwapChain();
 
