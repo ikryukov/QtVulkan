@@ -127,6 +127,7 @@ class MainWindow : public QMainWindow {
     std::vector<Vertex> mVertices;
     std::vector<uint16_t> mIndices;
     struct Mesh {
+        int vertexBase;
         int indexBase;
         int indexCount;
     };
