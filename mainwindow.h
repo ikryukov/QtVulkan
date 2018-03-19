@@ -122,6 +122,16 @@ class MainWindow : public QMainWindow {
     VkShaderModule createShaderModule(const std::vector<char>& code);
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
+    void addMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices, int id);
+    void createBuffersFromMeshes();
+    std::vector<Vertex> mVertices;
+    std::vector<uint16_t> mIndices;
+    struct Mesh {
+        int indexBase;
+        int indexCount;
+    };
+    std::vector<Mesh> mMeshes;
+
    protected:
     void resizeEvent(QResizeEvent* event);
 

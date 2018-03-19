@@ -68,6 +68,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     initVulkan();
 
+    // test: fill meshes
+    for (int i = 0; i < 100 * 100; ++i) {
+        addMesh(vertices, indices, i);
+    }
+    createBuffersFromMeshes();
+    createCommandBuffers();
+
     renderTimer.setInterval(16);
     QObject::connect(&renderTimer, &QTimer::timeout, this, &MainWindow::drawFrame);
     renderTimer.start();
@@ -540,7 +547,9 @@ void MainWindow::createCommandBuffers() {
 
         vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
-        vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+        for (const Mesh& m : mMeshes) {
+            vkCmdDrawIndexed(commandBuffers[i], m.indexCount, 1, 0, m.indexBase, 0);
+        }
 
         vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -758,6 +767,60 @@ uint32_t MainWindow::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags p
     throw std::runtime_error("failed to find suitable memory type!");
 }
 
+void MainWindow::addMesh(const std::vector<Vertex>& points, const std::vector<uint16_t>& indices, int id) {
+    Mesh current;
+    current.indexBase = mIndices.size();
+    current.indexCount = indices.size();
+    for (auto v : points) {
+        v.pos.x += id;
+        v.pos.y += id;
+        mVertices.push_back(v);
+    }
+    for (const auto& i : indices) {
+        mIndices.push_back(i);
+    }
+    mMeshes.push_back(current);
+}
+
+void MainWindow::createBuffersFromMeshes() {
+    size_t vertexBufferSize = mVertices.size() * sizeof(Vertex);
+    size_t indexBufferSize = mIndices.size() * sizeof(uint16_t);
+    VkBuffer vertexStaging, indexStaging;
+    VkDeviceMemory vertexStagingBufferMemory, indexStagingBufferMemory;
+
+    createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStaging,
+                 vertexStagingBufferMemory);
+
+    void* data;
+    vkMapMemory(device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &data);
+    memcpy(data, mVertices.data(), (size_t)vertexBufferSize);
+    vkUnmapMemory(device, vertexStagingBufferMemory);
+
+    createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer,
+                 vertexBufferMemory);
+
+    copyBuffer(vertexStaging, vertexBuffer, vertexBufferSize);
+
+    vkDestroyBuffer(device, vertexStaging, nullptr);
+    vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
+
+    // indices
+    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indexStaging,
+                 indexStagingBufferMemory);
+
+    vkMapMemory(device, indexStagingBufferMemory, 0, indexBufferSize, 0, &data);
+    memcpy(data, mIndices.data(), (size_t)indexBufferSize);
+    vkUnmapMemory(device, indexStagingBufferMemory);
+
+    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer,
+                 indexBufferMemory);
+
+    copyBuffer(indexStaging, indexBuffer, indexBufferSize);
+
+    vkDestroyBuffer(device, indexStaging, nullptr);
+    vkFreeMemory(device, indexStagingBufferMemory, nullptr);
+}
+
 void MainWindow::recreateSwapChain() {
     if (windowHeigh == 0 || windowWidth == 0)
         return;
@@ -782,8 +845,8 @@ void MainWindow::updateUniformBuffer() {
 
     UniformBufferObject ubo = {};
     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+    ubo.view = glm::lookAt(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 1000.0f);
     ubo.proj[1][1] *= -1;
 
     void* data;
