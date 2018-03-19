@@ -69,9 +69,18 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     initVulkan();
 
     // test: fill meshes
-    for (int i = 0; i < 100 * 100; ++i) {
+    for (int i = 0; i < 10000; ++i) {
         addMesh(vertices, indices, i);
     }
+
+    vkDestroyBuffer(device, indexBuffer, nullptr);
+    vkFreeMemory(device, indexBufferMemory, nullptr);
+
+    vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
+
+    vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+
     createBuffersFromMeshes();
     createCommandBuffers();
 
@@ -520,7 +529,6 @@ void MainWindow::createCommandBuffers() {
     for (size_t i = 0; i < commandBuffers.size(); ++i) {
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
         vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
 
@@ -548,7 +556,7 @@ void MainWindow::createCommandBuffers() {
         vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
         for (const Mesh& m : mMeshes) {
-            vkCmdDrawIndexed(commandBuffers[i], m.indexCount, 1, 0, m.indexBase, 0);
+            vkCmdDrawIndexed(commandBuffers[i], m.indexCount, 1, m.indexBase, m.vertexBase, 0);
         }
 
         vkCmdEndRenderPass(commandBuffers[i]);
@@ -769,6 +777,7 @@ uint32_t MainWindow::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags p
 
 void MainWindow::addMesh(const std::vector<Vertex>& points, const std::vector<uint16_t>& indices, int id) {
     Mesh current;
+    current.vertexBase = mVertices.size();
     current.indexBase = mIndices.size();
     current.indexCount = indices.size();
     for (auto v : points) {
