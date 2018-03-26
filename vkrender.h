@@ -45,7 +45,11 @@ const int INSTANCE_BUFFER_BIND_ID = 1;
 
 class VkRender {
    public:
+#ifdef VK_USE_PLATFORM_MACOS_MVK
     VkRender(const void* viewId);
+#elif VK_USE_PLATFORM_WIN32_KHR
+    VkRender(HWND viewId);
+#endif
     virtual ~VkRender();
 
     void drawFrame();
@@ -180,7 +184,11 @@ class VkRender {
 
     VkDebugReportCallbackEXT callback;
 
+#ifdef VK_USE_PLATFORM_MACOS_MVK
     const void* viewId;
+#elif VK_USE_PLATFORM_WIN32_KHR
+    HWND viewId;
+#endif
 };
 
 #endif  // VKRENDER_H

@@ -58,7 +58,12 @@ void DestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT
     }
 }
 
-VkRender::VkRender(const void* viewId) : viewId(viewId) {
+#ifdef VK_USE_PLATFORM_MACOS_MVK
+VkRender::VkRender(void* viewId)
+#elif VK_USE_PLATFORM_WIN32_KHR
+VkRender::VkRender(HWND viewId)
+#endif
+    : viewId(viewId) {
     initVulkan();
     // test: fill meshes
     for (int i = 0; i < 10000; ++i) {
@@ -196,7 +201,7 @@ void VkRender::createSurface() {
 #elif VK_USE_PLATFORM_WIN32_KHR
     VkWin32SurfaceCreateInfoKHR createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    createInfo.hwnd = reinterpret_cast<HWND>(winId());
+    createInfo.hwnd = viewId;
     createInfo.hinstance = GetModuleHandle(nullptr);
     auto CreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");
 
