@@ -2,22 +2,25 @@
 #define VKRENDER_H
 
 #include <array>
-#include <chrono>
 #include <unordered_map>
 #include <vector>
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif  // !NOMINMAX
+
 #include <vulkan/vulkan.h>
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 struct QueueFamilyIndices {
-    int graphicsFamily = -1;
-    int presentFamily = -1;
+    uint32_t graphicsFamily = -1;
+    uint32_t presentFamily = -1;
 
-    bool isComplete() { return graphicsFamily >= 0 && presentFamily >= 0; }
+    bool isComplete() { return graphicsFamily != -1 && presentFamily != -1; }
 };
 
 struct SwapChainSupportDetails {
@@ -27,13 +30,21 @@ struct SwapChainSupportDetails {
 };
 
 struct UniformBufferObject {
-    glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
+    glm::vec3 camPos;
+    glm::vec3 worldUp;
 };
 
 struct InstanceData {
-    glm::vec3 color;
+    glm::mat4 transform;
+    glm::vec4 color;
+};
+
+struct DrawItem {
+    int meshId;
+    uint32_t instanceBase;
+    uint32_t instanceCount;
 };
 
 struct Vertex {
@@ -53,14 +64,27 @@ class VkRender {
     virtual ~VkRender();
 
     void drawFrame();
+    void updateCamera(glm::mat4x4& view, glm::mat4x4& proj, glm::vec3& camPos, glm::vec3& worldUp);
     void updateUniformBuffer();
 
-    void addMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices, int id);
-    void createBuffersFromMeshes();
+    void recreateVertexBuffer();
+    void recreateIndexBuffer();
 
-    void resize(int w, int h);
+    void buildCommandBuffers(const std::vector<DrawItem>& drawItems);
+    void updateInstanceBuffer(const std::vector<InstanceData>& instData);
+
+    void resize(uint32_t w, uint32_t h);
+
+    void clear();
+
+    bool isCached(int id);
+    void addGeometry(const std::vector<glm::vec3>& vertices, const std::vector<uint32_t>& indices, int id);
 
    private:
+    VkClearColorValue mClearColor = {{0.8f, 0.8f, 0.8f, 1.0f}};
+    glm::mat4x4 proj, view;
+    glm::vec3 camPos, worldUp;
+
     uint32_t height = 0;
     uint32_t width = 0;
 
@@ -68,14 +92,13 @@ class VkRender {
 
     const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-    const std::vector<Vertex> vertices = {{{-0.5f, -0.5f, 1.0f}}, {{0.5f, -0.5f, 1.0f}}, {{0.5f, 0.5f, 1.0f}}, {{-0.5f, 0.5f, 1.0f}}};
-    const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
-    const std::vector<InstanceData> instances = {{{1.0f, 0.0f, 1.0f}}};
+    const std::vector<Vertex> vertices = {{{-0.5f, -0.5f, 0.0f}}, {{0.5f, -0.5f, 0.0f}}, {{0.5f, 0.5f, 0.0f}}, {{-0.5f, 0.5f, 0.0f}}};
+    const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
 
 #ifdef NDEBUG
-    const bool enableValidationLayers = false;
+    const bool enableValidationLayers = true;
 #else
-    const bool enableValidationLayers = false;
+    const bool enableValidationLayers = true;
 #endif
 
     void initVulkan();
@@ -89,7 +112,27 @@ class VkRender {
     void createGraphicsPipeline();
     void createFramebuffers();
     void createCommandPool();
+    VkFormat findDepthFormat();
+    VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+    void createImage(uint32_t width,
+                     uint32_t height,
+                     VkFormat format,
+                     VkImageTiling tiling,
+                     VkImageUsageFlags usage,
+                     VkMemoryPropertyFlags properties,
+                     VkImage& image,
+                     VkDeviceMemory& imageMemory);
+    VkCommandBuffer beginSingleTimeCommands();
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+    bool hasStencilComponent(VkFormat format);
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+    void createDepthResources();
+
+    void rebuildCommandBuffer(const size_t index);
+
     void createCommandBuffers();
+
     void createSemaphores();
     void createFences();
     void recreateSwapChain();
@@ -97,7 +140,7 @@ class VkRender {
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void createVertexBuffer();
     void createIndexBuffer();
-    void createInstanceBuffer();
+    void createInstanceBuffer(const int maxInstanceCount);
     void createUniformBuffer();
     void createDescriptorPool();
     void createDescriptorSet();
@@ -121,28 +164,22 @@ class VkRender {
     VkShaderModule createShaderModule(const std::vector<char>& code);
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
+    bool isInstanceDirty = false;
     std::vector<InstanceData> mInstances;
     std::vector<Vertex> mVertices;
-    std::vector<uint16_t> mIndices;
-
-    struct RenderItem {
-        glm::mat4x4 transform;
-        glm::vec3 color;
-        int meshId;
-        int instanceBase;
-        int instanceCount;
-    };
+    std::vector<uint32_t> mIndices;
+    std::vector<DrawItem> mDrawItems;
 
     struct Mesh {
-        int vertexBase;
-        int indexBase;
-        int indexCount;
-        int instanceBase;
+        int32_t vertexBase;
+        uint32_t indexBase;
+        uint32_t indexCount;
     };
     std::vector<Mesh> mMeshes;
+    std::unordered_map<int, Mesh> mIdToMesh;
 
     VkInstance instance;
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkPhysicalDevice physicalDevice = nullptr;
     VkDevice device;
 
     VkSurfaceKHR surface;
@@ -157,6 +194,10 @@ class VkRender {
 
     std::vector<VkImageView> swapChainImageViews;
     std::vector<VkFramebuffer> swapChainFramebuffers;
+
+    VkImage depthImage;
+    VkDeviceMemory depthImageMemory;
+    VkImageView depthImageView;
 
     VkRenderPass renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
@@ -178,6 +219,11 @@ class VkRender {
     VkDeviceMemory uniformBufferMemory;
     VkBuffer instanceBuffer;
     VkDeviceMemory instanceBufferMemory;
+
+    size_t instanceBuffersCount = 0;
+
+    std::vector<VkBuffer> instanceStagingBuffer;
+    std::vector<VkDeviceMemory> instanceStagingBufferMemory;
 
     VkDescriptorPool descriptorPool;
     VkDescriptorSet descriptorSet;

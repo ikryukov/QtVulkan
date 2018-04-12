@@ -5,7 +5,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->setupUi(this);
     VkWindow* vkWin = new VkWindow();
     QWidget* vkWidget = QWidget::createWindowContainer(vkWin);
-    vkWidget->setMinimumSize(800, 600);
+    //    vkWidget->setMinimumSize(800, 600);
     vkWidget->setMaximumSize(1920, 1080);
     ui->renderLayout->addWidget(vkWidget);
 }

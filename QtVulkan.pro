@@ -37,7 +37,8 @@ HEADERS += \
 FORMS += \
         mainwindow.ui
 
-INCLUDEPATH += ./external/glm/
+INCLUDEPATH += ./external/glm/ \
+    ./external/tiny_obj_loader/
 
 macx {
     SOURCES += makeviewmetal.mm
@@ -58,8 +59,8 @@ macx {
 
     QMAKE_POST_LINK += $${VULKAN_SDK_PATH}/macOS/bin/glslangValidator -V $$PWD/shaders/shader.vert;
     QMAKE_POST_LINK += $${VULKAN_SDK_PATH}/macOS/bin/glslangValidator -V $$PWD/shaders/shader.frag;
-    QMAKE_POST_LINK += $$QMAKE_COPY $$PWD/vert.spv $$OUT_PWD/$${TARGET}.app/Contents/MacOS;
-    QMAKE_POST_LINK += $$QMAKE_COPY $$PWD/frag.spv $$OUT_PWD/$${TARGET}.app/Contents/MacOS;
+    QMAKE_POST_LINK += $$QMAKE_COPY $$OUT_PWD/vert.spv $$OUT_PWD/$${TARGET}.app/Contents/MacOS;
+    QMAKE_POST_LINK += $$QMAKE_COPY $$OUT_PWD/frag.spv $$OUT_PWD/$${TARGET}.app/Contents/MacOS;
 }
 
 win32 {
