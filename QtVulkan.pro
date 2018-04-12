@@ -26,19 +26,19 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    vkrender.cpp \
-    vkwindow.cpp
+        vkrender.cpp \
+        vkwindow.cpp
 
 HEADERS += \
         mainwindow.h \
-    vkrender.h \
-    vkwindow.h
+        vkrender.h \
+        vkwindow.h
 
 FORMS += \
         mainwindow.ui
 
 INCLUDEPATH += ./external/glm/ \
-    ./external/tiny_obj_loader/
+                ./external/tiny_obj_loader/
 
 macx {
     SOURCES += makeviewmetal.mm
